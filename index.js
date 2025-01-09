@@ -5,6 +5,18 @@ const { query } = require('./db'); // Unsere Datenbank-Hilfsfunktion
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.get('/admin/codes', async (req, res) => {
+  try {
+    // Alle Codes, optional nur valid = true
+    const result = await query('SELECT code, valid FROM codes ORDER BY code');
+    res.json(result.rows);  // Ausgabe als JSON
+  } catch (err) {
+    console.error(err);
+    res.status(500).send("Fehler beim Abrufen der Codes");
+  }
+});
+
+
 app.get('/redeem', async (req, res) => {
   const token = req.query.token;
   if (!token) {
