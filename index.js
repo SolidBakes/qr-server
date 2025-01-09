@@ -5,6 +5,23 @@ const { query } = require('./db'); // Unsere Datenbank-Hilfsfunktion
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+app.get('/admin/addcode', async (req, res) => {
+  const token = req.query.token; // z.B. ?token=Z99999
+  if (!token) {
+    return res.send("Bitte Code als token-Query angeben, z.B. ?token=Z99999");
+  }
+
+  try {
+    // Insert in die Datenbank
+    await query('INSERT INTO codes (code, valid) VALUES ($1, true) ON CONFLICT (code) DO NOTHING', [token]);
+    return res.send(`Code '${token}' wurde hinzugefügt (falls er nicht schon existierte).`);
+  } catch (err) {
+    console.error("Fehler beim Hinzufügen des Codes:", err);
+    return res.status(500).send("Fehler beim Hinzufügen des Codes");
+  }
+});
+
+
 app.get('/admin/codes', async (req, res) => {
   try {
     // Alle Codes, optional nur valid = true
