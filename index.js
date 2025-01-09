@@ -128,36 +128,186 @@ app.get('/admin/codes', async (req, res) => {
   }
 });
 
-// GET-Route /redeem (Einlösen eines Codes)
 app.get('/redeem', async (req, res) => {
   const token = req.query.token;
   if (!token) {
-    return res.send("Kein Token angegeben");
+    // Kein Token angegeben → Zeige rote Fehlerseite
+    return res.send(`
+      <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: red;
+            font-family: Arial, sans-serif;
+          }
+          .message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            font-size: 2em;
+            height: 100vh; /* Vollbildhöhe */
+            word-wrap: break-word;
+            margin: 0 20px; /* etwas Rand */
+          }
+        </style>
+      </head>
+      <body>
+        <div class="message">
+          Fehler: Kein Token angegeben!
+        </div>
+      </body>
+      </html>
+    `);
   }
 
   try {
-    // 1. Check, ob der Code in der DB existiert
+    // 1. Prüfen, ob Code existiert
     const result = await query('SELECT valid FROM codes WHERE code = $1', [token]);
 
     if (result.rowCount === 0) {
-      // Kein Eintrag => ungültiger Code
-      return res.send("Ungültiger Code");
+      // Ungültiger Code → rote Fehlermeldung
+      return res.send(`
+        <html>
+        <head>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: red;
+              font-family: Arial, sans-serif;
+            }
+            .message {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              text-align: center;
+              color: white;
+              font-size: 2em;
+              height: 100vh;
+              word-wrap: break-word;
+              margin: 0 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="message">
+            Ungültiger Code!
+          </div>
+        </body>
+        </html>
+      `);
     }
 
     const { valid } = result.rows[0];
     if (!valid) {
-      // Code existiert, ist aber schon false => bereits eingelöst
-      return res.send("Dieser Code wurde bereits eingelöst.");
+      // Code bereits eingelöst → rote Seite
+      return res.send(`
+        <html>
+        <head>
+          <style>
+            body {
+              margin: 0;
+              padding: 0;
+              background-color: red;
+              font-family: Arial, sans-serif;
+            }
+            .message {
+              display: flex;
+              justify-content: center;
+              align-items: center;
+              text-align: center;
+              color: white;
+              font-size: 2em;
+              height: 100vh;
+              word-wrap: break-word;
+              margin: 0 20px;
+            }
+          </style>
+        </head>
+        <body>
+          <div class="message">
+            Dieser Code wurde bereits eingelöst!
+          </div>
+        </body>
+        </html>
+      `);
     }
 
-    // 2. Noch gültig => auf false setzen und Erfolg melden
+    // 2. Code noch gültig → auf false setzen
     await query('UPDATE codes SET valid = false WHERE code = $1', [token]);
-    return res.send("Gutschein erfolgreich eingelöst!");
+
+    // Erfolgsseite → grüner Hintergrund
+    return res.send(`
+      <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: green;
+            font-family: Arial, sans-serif;
+          }
+          .message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            font-size: 2em;
+            height: 100vh;
+            word-wrap: break-word;
+            margin: 0 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="message">
+          Gutschein erfolgreich eingelöst!
+        </div>
+      </body>
+      </html>
+    `);
+
   } catch (err) {
     console.error("Fehler beim Einlösen:", err);
-    return res.status(500).send("Fehler beim Einlösen des Codes");
+    // Bei unerwarteten Fehlern → rote Seite
+    return res.status(500).send(`
+      <html>
+      <head>
+        <style>
+          body {
+            margin: 0;
+            padding: 0;
+            background-color: red;
+            font-family: Arial, sans-serif;
+          }
+          .message {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            text-align: center;
+            color: white;
+            font-size: 2em;
+            height: 100vh;
+            word-wrap: break-word;
+            margin: 0 20px;
+          }
+        </style>
+      </head>
+      <body>
+        <div class="message">
+          Server-Fehler beim Einlösen des Codes.
+        </div>
+      </body>
+      </html>
+    `);
   }
 });
+
 
 // Server starten
 app.listen(PORT, () => {
