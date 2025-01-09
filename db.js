@@ -1,20 +1,21 @@
 // db.js
 const { Pool } = require('pg');
 
-// Pool konfigurieren; Connection String aus Umgebungsvariable
+// Nutze die Umgebungsvariable DATABASE_URL
+// Mit ssl: { rejectUnauthorized: false }, damit es auf Render klappt.
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
   ssl: {
-    rejectUnauthorized: false // Für Render ggf. notwendig (Self-Signed Certs)
+    rejectUnauthorized: false
   }
 });
 
-// Eine kleine Hilfsfunktion, um einfache Queries auszuführen
+// Einfache Hilfsfunktion zum Absetzen von Queries
 async function query(text, params) {
   const client = await pool.connect();
   try {
-    const res = await client.query(text, params);
-    return res;
+    const result = await client.query(text, params);
+    return result;
   } finally {
     client.release();
   }
