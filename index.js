@@ -10,6 +10,44 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json()); 
 // oder: app.use(bodyParser.json());
 
+
+app.get('/admin/addmultiple', async (req, res) => {
+  try {
+    // "codes" ist ein kommaseparierter String in der Query, z. B.:
+    // ?codes=C8DKAZ,XGYB2P,QG3Z7H
+    const codesParam = req.query.codes; 
+
+    if (!codesParam) {
+      return res.send("Keine Codes übergeben. Beispiel: /admin/addmultiple?codes=C8DKAZ,XGYB2P");
+    }
+
+    // String in Array umwandeln
+    const codesArray = codesParam.split(",").map(c => c.trim()).filter(Boolean);
+
+    if (codesArray.length === 0) {
+      return res.send("Keine Codes vorhanden (nach dem Split).");
+    }
+
+    // INSERT in DB (pro Code einzeln oder als Bulk)
+    for (const code of codesArray) {
+      await query(
+        `INSERT INTO codes (code, valid) 
+         VALUES ($1, true) 
+         ON CONFLICT (code) DO NOTHING`,
+        [code]
+      );
+    }
+
+    // Rückmeldung
+    return res.send(`Die folgenden Codes wurden hinzugefügt (sofern sie nicht schon existierten): 
+                     ${codesArray.join(", ")}`);
+  } catch (err) {
+    console.error("Fehler beim Einfügen mehrerer Codes:", err);
+    return res.status(500).send("Fehler beim Einfügen mehrerer Codes");
+  }
+});
+
+
 // POST-Route /admin/addcodes
 app.post('/admin/addcodes', async (req, res) => {
   try {
