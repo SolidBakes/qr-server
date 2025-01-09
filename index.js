@@ -1,36 +1,51 @@
+// index.js
 const express = require('express');
-const { query } = require('./db'); // unsere Funktion aus db.js
+const fs = require('fs');
+const path = require('path');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.get('/redeem', async (req, res) => {
+// codes.json einlesen (einmal beim Start)
+let codes = {};
+try {
+  const data = fs.readFileSync(path.join(__dirname, 'codes.json'), 'utf-8');
+  codes = JSON.parse(data);
+  console.log("codes.json geladen:", codes);
+} catch (err) {
+  console.error("Fehler beim Laden von codes.json:", err);
+}
+
+// Route zum Einlösen
+app.get('/redeem', (req, res) => {
   const token = req.query.token;
   if (!token) {
-    return res.send('Kein Token angegeben');
+    return res.send("Kein Token angegeben");
   }
 
-  try {
-    // 1) Schauen, ob der Code existiert und valid=true ist
-    const result = await query('SELECT valid FROM codes WHERE code = $1', [token]);
-    if (result.rowCount === 0) {
-      return res.send('Ungültiger Code');
-    }
+  // Prüfen, ob Token in codes vorhanden
+  if (codes[token] === undefined) {
+    return res.send("Ungültiger Code");
+  }
 
-    const { valid } = result.rows[0];
-    if (!valid) {
-      return res.send('Dieser Code wurde bereits eingelöst.');
-    }
+  // Prüfen, ob noch true
+  if (codes[token] === true) {
+    // Einlösen -> auf false setzen
+    codes[token] = false;
 
-    // 2) Wenn valid=true, Code entwerten (valid=false)
-    await query('UPDATE codes SET valid = FALSE WHERE code = $1', [token]);
-    return res.send('Gutschein erfolgreich eingelöst!');
-  } catch (err) {
-    console.error(err);
-    return res.status(500).send('Fehler beim Einlösen des Codes');
+    // codes.json aktualisieren, damit der Status gespeichert bleibt
+    fs.writeFileSync(
+      path.join(__dirname, 'codes.json'),
+      JSON.stringify(codes, null, 2)
+    );
+
+    return res.send("Gutschein erfolgreich eingelöst!");
+  } else {
+    return res.send("Dieser Code wurde bereits eingelöst.");
   }
 });
 
+// Server starten
 app.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
 });
