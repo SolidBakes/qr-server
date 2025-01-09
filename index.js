@@ -1,51 +1,48 @@
 // index.js
 const express = require('express');
-const fs = require('fs');
-const path = require('path');
+const { query } = require('./db'); // Unsere Datenbank-Hilfsfunktion
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-// codes.json einlesen (einmal beim Start)
-let codes = {};
-try {
-  const data = fs.readFileSync(path.join(__dirname, 'codes.json'), 'utf-8');
-  codes = JSON.parse(data);
-  console.log("codes.json geladen:", codes);
-} catch (err) {
-  console.error("Fehler beim Laden von codes.json:", err);
-}
-
-// Route zum Einlösen
-app.get('/redeem', (req, res) => {
+app.get('/redeem', async (req, res) => {
   const token = req.query.token;
   if (!token) {
     return res.send("Kein Token angegeben");
   }
 
-  // Prüfen, ob Token in codes vorhanden
-  if (codes[token] === undefined) {
-    return res.send("Ungültiger Code");
-  }
+  try {
+    // 1. Aus DB lesen, ob es den Code gibt
+    const result = await query(
+      'SELECT valid FROM codes WHERE code = $1',
+      [token]
+    );
 
-  // Prüfen, ob noch true
-  if (codes[token] === true) {
-    // Einlösen -> auf false setzen
-    codes[token] = false;
+    if (result.rowCount === 0) {
+      // Kein Eintrag => ungültiger Code
+      return res.send("Ungültiger Code");
+    }
 
-    // codes.json aktualisieren, damit der Status gespeichert bleibt
-    fs.writeFileSync(
-      path.join(__dirname, 'codes.json'),
-      JSON.stringify(codes, null, 2)
+    const { valid } = result.rows[0];
+
+    if (!valid) {
+      // Code existiert, ist aber schon false => bereits eingelöst
+      return res.send("Dieser Code wurde bereits eingelöst.");
+    }
+
+    // 2. Noch gültig => auf false setzen und melden, dass er eingelöst wurde
+    await query(
+      'UPDATE codes SET valid = false WHERE code = $1',
+      [token]
     );
 
     return res.send("Gutschein erfolgreich eingelöst!");
-  } else {
-    return res.send("Dieser Code wurde bereits eingelöst.");
+  } catch (err) {
+    console.error("Fehler beim Einlösen:", err);
+    return res.status(500).send("Fehler beim Einlösen des Codes");
   }
 });
 
-// Server starten
 app.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
 });
