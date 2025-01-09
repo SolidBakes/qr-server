@@ -1,5 +1,6 @@
 // index.js
 const express = require('express');
+const adminAuth = require('./adminAuth'); // die Middleware
 const { query } = require('./db'); // Unsere Datenbank-Hilfsfunktion
 const bodyParser = require('body-parser');  // oder express.json()
 
@@ -9,6 +10,11 @@ const PORT = process.env.PORT || 3000;
 // JSON-Parsing aktivieren (damit POST mit JSON-Body gelesen werden kann)
 app.use(express.json()); 
 // oder: app.use(bodyParser.json());
+
+
+// Alle Routen unter /admin schützen:
+app.use('/admin', adminAuth);
+
 
 app.get('/admin/removemultiple', async (req, res) => {
   try {
