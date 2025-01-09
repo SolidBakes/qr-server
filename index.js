@@ -1,9 +1,12 @@
 // index.js
 const express = require('express');
 const { query } = require('./db'); // Unsere Datenbank-Hilfsfunktion
+const bodyParser = require('body-parser');  // oder express.json()
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+
 
 app.get('/admin/addcode', async (req, res) => {
   const token = req.query.token; // z.B. ?token=Z99999
