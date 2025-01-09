@@ -10,6 +10,30 @@ const PORT = process.env.PORT || 3000;
 app.use(express.json()); 
 // oder: app.use(bodyParser.json());
 
+app.get('/admin/removemultiple', async (req, res) => {
+  try {
+    const codesParam = req.query.codes;
+    if (!codesParam) {
+      return res.send("Keine Codes übergeben. Beispiel: /admin/removemultiple?codes=C8DKAZ,XGYB2P");
+    }
+    const codesArray = codesParam.split(",").map(c => c.trim()).filter(Boolean);
+    if (codesArray.length === 0) {
+      return res.send("Keine Codes vorhanden (nach dem Split).");
+    }
+
+    // Variante: Schleife oder "IN" (Bulk-Löschen)
+    for (const code of codesArray) {
+      await query('DELETE FROM codes WHERE code = $1', [code]);
+    }
+
+    return res.send(`Die folgenden Codes wurden (falls vorhanden) gelöscht: ${codesArray.join(", ")}`);
+  } catch (err) {
+    console.error("Fehler beim Entfernen mehrerer Codes:", err);
+    return res.status(500).send("Fehler beim Entfernen mehrerer Codes");
+  }
+});
+
+
 
 app.get('/admin/addmultiple', async (req, res) => {
   try {
