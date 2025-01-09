@@ -6,10 +6,11 @@ const bodyParser = require('body-parser');  // oder express.json()
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// JSON-Parsing aktivieren (damit POST mit JSON-Body gelesen werden kann)
+app.use(express.json()); 
+// oder: app.use(bodyParser.json());
 
-2. Erstelle eine **POST-Route** `/admin/addcodes`:
-
-```js
+// POST-Route /admin/addcodes
 app.post('/admin/addcodes', async (req, res) => {
   try {
     // "codes" ist ein Array, z. B. ["C8DKAZ", "XGYB2P", ...]
@@ -19,7 +20,7 @@ app.post('/admin/addcodes', async (req, res) => {
       return res.status(400).send("Bitte ein Array 'codes' im Body senden.");
     }
 
-    // INSERT in DB (z. B. Schleife ODER ein bulk-Insert)
+    // INSERT in DB (Schleife oder Bulk)
     for (const code of codesArray) {
       await query(
         `INSERT INTO codes (code, valid) 
@@ -36,9 +37,7 @@ app.post('/admin/addcodes', async (req, res) => {
   }
 });
 
-
-
-
+// GET-Route /admin/addcode (einzelner Code im Query)
 app.get('/admin/addcode', async (req, res) => {
   const token = req.query.token; // z.B. ?token=Z99999
   if (!token) {
@@ -55,7 +54,7 @@ app.get('/admin/addcode', async (req, res) => {
   }
 });
 
-
+// GET-Route /admin/codes (alle Codes abfragen)
 app.get('/admin/codes', async (req, res) => {
   try {
     // Alle Codes, optional nur valid = true
@@ -67,7 +66,7 @@ app.get('/admin/codes', async (req, res) => {
   }
 });
 
-
+// GET-Route /redeem (Einlösen eines Codes)
 app.get('/redeem', async (req, res) => {
   const token = req.query.token;
   if (!token) {
@@ -75,11 +74,8 @@ app.get('/redeem', async (req, res) => {
   }
 
   try {
-    // 1. Aus DB lesen, ob es den Code gibt
-    const result = await query(
-      'SELECT valid FROM codes WHERE code = $1',
-      [token]
-    );
+    // 1. Check, ob der Code in der DB existiert
+    const result = await query('SELECT valid FROM codes WHERE code = $1', [token]);
 
     if (result.rowCount === 0) {
       // Kein Eintrag => ungültiger Code
@@ -87,18 +83,13 @@ app.get('/redeem', async (req, res) => {
     }
 
     const { valid } = result.rows[0];
-
     if (!valid) {
       // Code existiert, ist aber schon false => bereits eingelöst
       return res.send("Dieser Code wurde bereits eingelöst.");
     }
 
-    // 2. Noch gültig => auf false setzen und melden, dass er eingelöst wurde
-    await query(
-      'UPDATE codes SET valid = false WHERE code = $1',
-      [token]
-    );
-
+    // 2. Noch gültig => auf false setzen und Erfolg melden
+    await query('UPDATE codes SET valid = false WHERE code = $1', [token]);
     return res.send("Gutschein erfolgreich eingelöst!");
   } catch (err) {
     console.error("Fehler beim Einlösen:", err);
@@ -106,6 +97,7 @@ app.get('/redeem', async (req, res) => {
   }
 });
 
+// Server starten
 app.listen(PORT, () => {
   console.log(`Server läuft auf Port ${PORT}`);
 });
