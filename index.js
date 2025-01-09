@@ -7,6 +7,37 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 
 
+2. Erstelle eine **POST-Route** `/admin/addcodes`:
+
+```js
+app.post('/admin/addcodes', async (req, res) => {
+  try {
+    // "codes" ist ein Array, z. B. ["C8DKAZ", "XGYB2P", ...]
+    const codesArray = req.body.codes;
+
+    if (!codesArray || !Array.isArray(codesArray) || codesArray.length === 0) {
+      return res.status(400).send("Bitte ein Array 'codes' im Body senden.");
+    }
+
+    // INSERT in DB (z. B. Schleife ODER ein bulk-Insert)
+    for (const code of codesArray) {
+      await query(
+        `INSERT INTO codes (code, valid) 
+         VALUES ($1, true) 
+         ON CONFLICT (code) DO NOTHING`,
+        [code]
+      );
+    }
+
+    res.send(`Es wurden ${codesArray.length} Codes hinzugefügt (bzw. ignoriert, wenn schon vorhanden).`);
+  } catch (err) {
+    console.error("Fehler beim Hinzufügen mehrerer Codes:", err);
+    res.status(500).send("Interner Serverfehler");
+  }
+});
+
+
+
 
 app.get('/admin/addcode', async (req, res) => {
   const token = req.query.token; // z.B. ?token=Z99999
